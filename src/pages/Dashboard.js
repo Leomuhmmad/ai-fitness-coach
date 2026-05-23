@@ -14,6 +14,8 @@ export default function Dashboard({ user, profile }) {
   const [checked, setChecked] = useState({})
   const [streak, setStreak] = useState(0)
   const [todayDone, setTodayDone] = useState(false)
+  const [activeTimer, setActiveTimer] = useState(null)
+  const [timerInterval, setTimerInterval] = useState(null)
   const [mobile, setMobile] = useState(isMobile())
 
   useEffect(() => {
@@ -136,6 +138,31 @@ Respond ONLY with a JSON object, no markdown:
     }, { onConflict: 'user_id,date' })
     setTodayDone(true)
     setStreak(prev => prev + 1)
+  }
+
+  const startTimer = (key, seconds) => {
+    if (timerInterval) clearInterval(timerInterval)
+    setActiveTimer({ key, seconds, total: seconds, running: true })
+    const interval = setInterval(() => {
+      setActiveTimer(prev => {
+        if (!prev || prev.seconds <= 1) {
+          clearInterval(interval)
+          return { ...prev, seconds: 0, running: false }
+        }
+        return { ...prev, seconds: prev.seconds - 1 }
+      })
+    }, 1000)
+    setTimerInterval(interval)
+  }
+
+  const stopTimer = () => {
+    if (timerInterval) clearInterval(timerInterval)
+    setActiveTimer(null)
+  }
+
+  const parseRestSeconds = (rest) => {
+    const num = parseInt(rest)
+    return isNaN(num) ? 60 : num
   }
 
   const signOut = async () => {
@@ -280,17 +307,41 @@ Respond ONLY with a JSON object, no markdown:
                         <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {day.exercises?.map((ex, i) => {
                             const key = `day-${dayIndex}-ex-${i}`
+                            const restSecs = parseRestSeconds(ex.rest)
+                            const isActive = activeTimer?.key === key
                             return (
-                              <div key={i} onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: checked[key] ? '#E1F5EE' : 'white', borderRadius: 10, cursor: isToday ? 'pointer' : 'default', border: `1px solid ${checked[key] ? '#9FE1CB' : '#f0f0f0'}` }}>
-                                {isToday && (
-                                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#1D9E75' : 'white', border: `2px solid ${checked[key] ? '#1D9E75' : '#ddd'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                    {checked[key] && <span style={{ color: 'white', fontSize: 11 }}>✓</span>}
+                              <div key={i} style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${checked[key] ? '#9FE1CB' : '#f0f0f0'}` }}>
+                                <div onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: checked[key] ? '#E1F5EE' : 'white', cursor: isToday ? 'pointer' : 'default' }}>
+                                  {isToday && (
+                                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#1D9E75' : 'white', border: `2px solid ${checked[key] ? '#1D9E75' : '#ddd'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                      {checked[key] && <span style={{ color: 'white', fontSize: 11 }}>✓</span>}
+                                    </div>
+                                  )}
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 500, fontSize: 13, color: checked[key] ? '#888' : '#111', textDecoration: checked[key] ? 'line-through' : 'none' }}>{ex.name}</div>
+                                    <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{ex.sets} sets · {ex.reps} reps · Rest {ex.rest}</div>
+                                  </div>
+                                  {isToday && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); isActive ? stopTimer() : startTimer(key, restSecs) }}
+                                      style={{ padding: '4px 10px', background: isActive ? '#e74c3c' : '#1D9E75', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
+                                      {isActive ? '⏹ Stop' : '⏱ Rest'}
+                                    </button>
+                                  )}
+                                </div>
+                                {isActive && (
+                                  <div style={{ background: '#f0faf6', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{ fontSize: 24, fontWeight: 700, color: activeTimer.seconds > 10 ? '#1D9E75' : '#e74c3c', minWidth: 48 }}>
+                                      {activeTimer.seconds}s
+                                    </div>
+                                    <div style={{ flex: 1, height: 6, background: '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', width: `${(activeTimer.seconds / restSecs) * 100}%`, background: activeTimer.seconds > 10 ? '#1D9E75' : '#e74c3c', borderRadius: 3, transition: 'width 1s linear' }} />
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#888' }}>
+                                      {activeTimer.running ? 'Resting...' : '✅ Done!'}
+                                    </div>
                                   </div>
                                 )}
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 500, fontSize: 13, color: checked[key] ? '#888' : '#111', textDecoration: checked[key] ? 'line-through' : 'none' }}>{ex.name}</div>
-                                  <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{ex.sets} sets · {ex.reps} reps · Rest {ex.rest}</div>
-                                </div>
                               </div>
                             )
                           })}
