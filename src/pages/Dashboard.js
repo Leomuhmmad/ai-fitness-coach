@@ -176,70 +176,114 @@ Respond ONLY with a JSON object, no markdown:
 
           {/* HOME */}
           {screen === 'home' && (
-            <div>
-              <div style={{ background: '#1D9E75', borderRadius: 16, padding: mobile ? 20 : 28, color: 'white', marginBottom: 24 }}>
-                <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 4 }}>
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                </div>
-                <div style={{ fontSize: mobile ? 22 : 28, fontWeight: 600, marginBottom: 16 }}>
-                  Good {new Date().getHours() < 12 ? 'morning' : 'evening'}, {profile.name}! 👋
-                </div>
-                <div style={{ display: 'flex', gap: 32 }}>
-                  <div><div style={{ fontSize: 22, fontWeight: 600 }}>{doneCount}</div><div style={{ fontSize: 12, opacity: 0.8 }}>Done today</div></div>
-                  <div><div style={{ fontSize: 22, fontWeight: 600 }}>{profile.goal?.replace('_', ' ')}</div><div style={{ fontSize: 12, opacity: 0.8 }}>Your goal</div></div>
-                </div>
-              </div>
+  <div>
+    <div style={{ background: '#1D9E75', borderRadius: 16, padding: mobile ? 20 : 28, color: 'white', marginBottom: 24 }}>
+      <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 4 }}>
+        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+      </div>
+      <div style={{ fontSize: mobile ? 22 : 28, fontWeight: 600, marginBottom: 16 }}>
+        Good {new Date().getHours() < 12 ? 'morning' : 'evening'}, {profile.name}! 👋
+      </div>
+      <div style={{ display: 'flex', gap: 32 }}>
+        <div><div style={{ fontSize: 22, fontWeight: 600 }}>{doneCount}</div><div style={{ fontSize: 12, opacity: 0.8 }}>Done today</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 600 }}>{profile.goal?.replace('_', ' ')}</div><div style={{ fontSize: 12, opacity: 0.8 }}>Your goal</div></div>
+      </div>
+    </div>
 
-              <div style={{ background: '#f8f9fa', borderRadius: 14, padding: 16, marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 34, height: 34, background: '#E1F5EE', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>AI Coach</div>
-                    <div style={{ fontSize: 12, color: '#888' }}>Ask anything about fitness</div>
+    {/* AI Coach */}
+    <div style={{ background: '#f8f9fa', borderRadius: 14, padding: 16, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <div style={{ width: 34, height: 34, background: '#E1F5EE', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>AI Coach</div>
+          <div style={{ fontSize: 12, color: '#888' }}>Ask anything about fitness</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: aiAnswer ? 12 : 0 }}>
+        <input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askCoach()} placeholder="e.g. How do I lose belly fat fast?" style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 10, outline: 'none' }} />
+        <button onClick={askCoach} disabled={asking} style={{ padding: '10px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14 }}>
+          {asking ? '...' : '→'}
+        </button>
+      </div>
+      {aiAnswer && (
+        <div style={{ background: 'white', border: '1px solid #e8f5e9', borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6, color: '#333' }}>
+          {aiAnswer}
+        </div>
+      )}
+    </div>
+
+    {/* Weekly Plan */}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Weekly Plan</div>
+      <button onClick={generatePlan} disabled={loadingAI} style={{ fontSize: 12, color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+        {loadingAI ? 'Generating...' : workoutPlan ? '↻ Regenerate' : '✨ Generate with AI'}
+      </button>
+    </div>
+
+    {!workoutPlan ? (
+      <div style={{ textAlign: 'center', padding: '40px 20px', background: '#f8f9fa', borderRadius: 14, color: '#999', fontSize: 14 }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>💪</div>
+        <div>Tap "Generate with AI" to get your personalized weekly plan</div>
+      </div>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {workoutPlan.days?.map((day, dayIndex) => {
+          const isToday = new Date().toLocaleDateString('en-US', { weekday: 'long' }) === day.day
+          return (
+            <div key={dayIndex} style={{ background: isToday ? '#f0faf6' : '#f8f9fa', borderRadius: 14, border: isToday ? '1.5px solid #1D9E75' : '1px solid #f0f0f0', overflow: 'hidden' }}>
+              {/* Day Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: isToday ? '#1D9E75' : 'transparent' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: isToday ? 'white' : '#111' }}>
+                    {day.day} {isToday && '← Today'}
+                  </div>
+                  <div style={{ fontSize: 12, color: isToday ? 'rgba(255,255,255,0.8)' : '#888', marginTop: 2 }}>
+                    {day.focus}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: aiAnswer ? 12 : 0 }}>
-                  <input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askCoach()} placeholder="e.g. How do I lose belly fat fast?" style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 10, outline: 'none' }} />
-                  <button onClick={askCoach} disabled={asking} style={{ padding: '10px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14 }}>
-                    {asking ? '...' : '→'}
-                  </button>
+                <div style={{ fontSize: 12, color: isToday ? 'rgba(255,255,255,0.8)' : '#888' }}>
+                  {day.exercises?.length} exercises
                 </div>
-                {aiAnswer && (
-                  <div style={{ background: 'white', border: '1px solid #e8f5e9', borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6, color: '#333' }}>
-                    {aiAnswer}
-                  </div>
-                )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Today's Workout</div>
-                <button onClick={generatePlan} disabled={loadingAI} style={{ fontSize: 12, color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                  {loadingAI ? 'Generating...' : workoutPlan ? '↻ Regenerate' : '✨ Generate with AI'}
-                </button>
-              </div>
-
-              {!workoutPlan ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#f8f9fa', borderRadius: 14, color: '#999', fontSize: 14 }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>💪</div>
-                  <div>Tap "Generate with AI" to get your personalized workout plan</div>
-                </div>
-              ) : (
-                <div style={{ display: mobile ? 'flex' : 'grid', flexDirection: 'column', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {workoutPlan.days?.[0]?.exercises?.map((ex, i) => (
-                    <div key={i} onClick={() => toggleCheck(`ex-${i}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: checked[`ex-${i}`] ? '#E1F5EE' : '#f8f9fa', borderRadius: 12, cursor: 'pointer', border: `1px solid ${checked[`ex-${i}`] ? '#9FE1CB' : '#f0f0f0'}` }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: checked[`ex-${i}`] ? '#1D9E75' : 'white', border: `2px solid ${checked[`ex-${i}`] ? '#1D9E75' : '#ddd'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {checked[`ex-${i}`] && <span style={{ color: 'white', fontSize: 13 }}>✓</span>}
-                      </div>
+              {/* Exercises */}
+              <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {day.exercises?.map((ex, i) => {
+                  const key = `day-${dayIndex}-ex-${i}`
+                  return (
+                    <div key={i} onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: checked[key] ? '#E1F5EE' : 'white', borderRadius: 10, cursor: isToday ? 'pointer' : 'default', border: `1px solid ${checked[key] ? '#9FE1CB' : '#f0f0f0'}` }}>
+                      {isToday && (
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#1D9E75' : 'white', border: `2px solid ${checked[key] ? '#1D9E75' : '#ddd'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {checked[key] && <span style={{ color: 'white', fontSize: 11 }}>✓</span>}
+                        </div>
+                      )}
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, textDecoration: checked[`ex-${i}`] ? 'line-through' : 'none', color: checked[`ex-${i}`] ? '#888' : '#111' }}>{ex.name}</div>
-                        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{ex.sets} sets · {ex.reps} reps · Rest {ex.rest}</div>
+                        <div style={{ fontWeight: 500, fontSize: 13, color: checked[key] ? '#888' : '#111', textDecoration: checked[key] ? 'line-through' : 'none' }}>{ex.name}</div>
+                        <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{ex.sets} sets · {ex.reps} reps · Rest {ex.rest}</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )
+                })}
+              </div>
             </div>
-          )}
+          )
+        })}
+
+        {/* Tips */}
+        {workoutPlan.tips?.length > 0 && (
+          <div style={{ background: '#FFF9E6', border: '1px solid #FFE082', borderRadius: 14, padding: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: '#F59E0B', marginBottom: 10 }}>💡 AI Tips</div>
+            {workoutPlan.tips.map((tip, i) => (
+              <div key={i} style={{ fontSize: 13, color: '#555', marginBottom: 6, display: 'flex', gap: 8 }}>
+                <span>•</span><span>{tip}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
 
           {/* NUTRITION */}
           {screen === 'nutrition' && (
