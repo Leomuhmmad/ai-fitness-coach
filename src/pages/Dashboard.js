@@ -34,7 +34,7 @@ export default function Dashboard({ user, profile }) {
   }
 
   const callAI = async (prompt, systemMsg = '') => {
-    const res = await fetch('http://localhost:3001/api/ai', {
+    const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, system: systemMsg })
