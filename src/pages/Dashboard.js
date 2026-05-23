@@ -19,6 +19,7 @@ export default function Dashboard({ user, profile }) {
     const handleResize = () => setMobile(isMobile())
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchPlans = async () => {
