@@ -9,8 +9,8 @@ export default function Dashboard({ user, profile }) {
   const [nutritionPlan, setNutritionPlan] = useState(null)
   const [loadingAI, setLoadingAI] = useState(false)
   const [question, setQuestion] = useState('')
-  const [aiAnswer, setAiAnswer] = useState('')
   const [asking, setAsking] = useState(false)
+  const [chatHistory, setChatHistory] = useState([])
   const [checked, setChecked] = useState({})
   const [streak, setStreak] = useState(0)
   const [todayDone, setTodayDone] = useState(false)
@@ -47,11 +47,11 @@ export default function Dashboard({ user, profile }) {
     if (streakData !== null) setStreak(streakData)
   }
 
-  const callAI = async (prompt, systemMsg = '') => {
+  const callAI = async (messages, systemMsg = '') => {
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, system: systemMsg })
+      body: JSON.stringify({ messages, system: systemMsg })
     })
     const data = await res.json()
     return data.text
@@ -80,7 +80,7 @@ Respond ONLY with a JSON object in this exact format, no markdown:
   ],
   "tips": ["tip1", "tip2"]
 }`
-      const text = await callAI(prompt)
+      const text = await callAI([{ role: 'user', content: prompt }])
       const plan = JSON.parse(text.replace(/```json|```/g, '').trim())
       await supabase.from('workout_plans').insert({ user_id: user.id, plan })
       setWorkoutPlan(plan)
@@ -107,7 +107,7 @@ Respond ONLY with a JSON object, no markdown:
     { "time": "8:00 AM", "name": "Breakfast", "foods": "Eggs, toast, yogurt", "calories": 480, "protein": 32 }
   ]
 }`
-      const text = await callAI(prompt)
+      const text = await callAI([{ role: 'user', content: prompt }])
       const plan = JSON.parse(text.replace(/```json|```/g, '').trim())
       await supabase.from('nutrition_plans').insert({ user_id: user.id, plan })
       setNutritionPlan(plan)
@@ -118,14 +118,19 @@ Respond ONLY with a JSON object, no markdown:
   const askCoach = async () => {
     if (!question.trim()) return
     setAsking(true)
-    setAiAnswer('')
+    const userMsg = question
+    setQuestion('')
+    const newHistory = [...chatHistory, { role: 'user', content: userMsg }]
+    setChatHistory(newHistory)
     try {
       const answer = await callAI(
-        question,
-        `You are FitAI, an expert fitness and nutrition coach. The user's goal is ${profile.goal}. Give concise, actionable advice.`
+        newHistory,
+        `You are FitAI, an expert fitness and nutrition coach. The user's goal is ${profile.goal}, age ${profile.age}, weight ${profile.weight_kg}kg. Give concise, actionable advice.`
       )
-      setAiAnswer(answer)
-    } catch (e) { setAiAnswer('Error connecting to AI.') }
+      setChatHistory([...newHistory, { role: 'assistant', content: answer }])
+    } catch (e) {
+      setChatHistory([...newHistory, { role: 'assistant', content: 'Error connecting to AI.' }])
+    }
     setAsking(false)
   }
 
@@ -246,25 +251,46 @@ Respond ONLY with a JSON object, no markdown:
                 </div>
               </div>
 
+              {/* AI Coach */}
               <div style={{ background: '#f8f9fa', borderRadius: 14, padding: 16, marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 34, height: 34, background: '#E1F5EE', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>AI Coach</div>
-                    <div style={{ fontSize: 12, color: '#888' }}>Ask anything about fitness</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 34, height: 34, background: '#E1F5EE', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>AI Coach</div>
+                      <div style={{ fontSize: 12, color: '#888' }}>Remembers your conversation</div>
+                    </div>
                   </div>
+                  {chatHistory.length > 0 && (
+                    <button onClick={() => setChatHistory([])} style={{ fontSize: 12, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}>Clear</button>
+                  )}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: aiAnswer ? 12 : 0 }}>
-                  <input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askCoach()} placeholder="e.g. How do I lose belly fat fast?" style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 10, outline: 'none' }} />
+
+                {chatHistory.length > 0 && (
+                  <div style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {chatHistory.map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.5, background: msg.role === 'user' ? '#1D9E75' : 'white', color: msg.role === 'user' ? 'white' : '#333', border: msg.role === 'assistant' ? '1px solid #e8f5e9' : 'none' }}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    ))}
+                    {asking && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <div style={{ padding: '8px 12px', borderRadius: 12, fontSize: 13, background: 'white', border: '1px solid #e8f5e9', color: '#888' }}>Thinking...</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askCoach()}
+                    placeholder={chatHistory.length > 0 ? 'Continue the conversation...' : 'e.g. How do I lose belly fat fast?'}
+                    style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 10, outline: 'none' }} />
                   <button onClick={askCoach} disabled={asking} style={{ padding: '10px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14 }}>
                     {asking ? '...' : '→'}
                   </button>
                 </div>
-                {aiAnswer && (
-                  <div style={{ background: 'white', border: '1px solid #e8f5e9', borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6, color: '#333' }}>
-                    {aiAnswer}
-                  </div>
-                )}
               </div>
 
               {!todayDone ? (
@@ -297,9 +323,7 @@ Respond ONLY with a JSON object, no markdown:
                       <div key={dayIndex} style={{ background: isToday ? '#f0faf6' : '#f8f9fa', borderRadius: 14, border: isToday ? '1.5px solid #1D9E75' : '1px solid #f0f0f0', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: isToday ? '#1D9E75' : 'transparent' }}>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 14, color: isToday ? 'white' : '#111' }}>
-                              {day.day} {isToday && '← Today'}
-                            </div>
+                            <div style={{ fontWeight: 600, fontSize: 14, color: isToday ? 'white' : '#111' }}>{day.day} {isToday && '← Today'}</div>
                             <div style={{ fontSize: 12, color: isToday ? 'rgba(255,255,255,0.8)' : '#888', marginTop: 2 }}>{day.focus}</div>
                           </div>
                           <div style={{ fontSize: 12, color: isToday ? 'rgba(255,255,255,0.8)' : '#888' }}>{day.exercises?.length} exercises</div>
@@ -322,8 +346,7 @@ Respond ONLY with a JSON object, no markdown:
                                     <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{ex.sets} sets · {ex.reps} reps · Rest {ex.rest}</div>
                                   </div>
                                   {isToday && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); isActive ? stopTimer() : startTimer(key, restSecs) }}
+                                    <button onClick={(e) => { e.stopPropagation(); isActive ? stopTimer() : startTimer(key, restSecs) }}
                                       style={{ padding: '4px 10px', background: isActive ? '#e74c3c' : '#1D9E75', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
                                       {isActive ? '⏹ Stop' : '⏱ Rest'}
                                     </button>
@@ -331,15 +354,11 @@ Respond ONLY with a JSON object, no markdown:
                                 </div>
                                 {isActive && (
                                   <div style={{ background: '#f0faf6', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <div style={{ fontSize: 24, fontWeight: 700, color: activeTimer.seconds > 10 ? '#1D9E75' : '#e74c3c', minWidth: 48 }}>
-                                      {activeTimer.seconds}s
-                                    </div>
+                                    <div style={{ fontSize: 24, fontWeight: 700, color: activeTimer.seconds > 10 ? '#1D9E75' : '#e74c3c', minWidth: 48 }}>{activeTimer.seconds}s</div>
                                     <div style={{ flex: 1, height: 6, background: '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
                                       <div style={{ height: '100%', width: `${(activeTimer.seconds / restSecs) * 100}%`, background: activeTimer.seconds > 10 ? '#1D9E75' : '#e74c3c', borderRadius: 3, transition: 'width 1s linear' }} />
                                     </div>
-                                    <div style={{ fontSize: 12, color: '#888' }}>
-                                      {activeTimer.running ? 'Resting...' : '✅ Done!'}
-                                    </div>
+                                    <div style={{ fontSize: 12, color: '#888' }}>{activeTimer.running ? 'Resting...' : '✅ Done!'}</div>
                                   </div>
                                 )}
                               </div>

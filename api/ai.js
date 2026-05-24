@@ -1,10 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   try {
-    const { prompt, system } = req.body
-    const messages = []
-    if (system) messages.push({ role: 'system', content: system })
-    messages.push({ role: 'user', content: prompt })
+    const { messages, prompt, system } = req.body
+    const chatMessages = messages || [{ role: 'user', content: prompt }]
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -15,7 +13,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         max_tokens: 1000,
-        messages
+        messages: [
+          { role: 'system', content: system || 'You are a helpful fitness coach.' },
+          ...chatMessages
+        ]
       })
     })
     const data = await response.json()
