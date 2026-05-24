@@ -1,0 +1,32 @@
+export const themes = {
+  dark: {
+    bg: '#0d0d10',
+    bgSecondary: '#131316',
+    bgCard: '#1a1a20',
+    bgHero: '#1E1B3A',
+    accent: '#7F77DD',
+    accentLight: '#EEEDFE',
+    accentDark: '#534AB7',
+    text: '#ffffff',
+    textSecondary: '#888',
+    textMuted: '#444',
+    border: '#2a2a30',
+    borderAccent: '#7F77DD',
+    navBg: '#131316',
+  },
+  light: {
+    bg: '#ffffff',
+    bgSecondary: '#f8f8ff',
+    bgCard: '#ffffff',
+    bgHero: '#7F77DD',
+    accent: '#7F77DD',
+    accentLight: '#EEEDFE',
+    accentDark: '#534AB7',
+    text: '#111111',
+    textSecondary: '#666',
+    textMuted: '#bbb',
+    border: '#f0f0f0',
+    borderAccent: '#e8e6ff',
+    navBg: '#ffffff',
+  }
+}

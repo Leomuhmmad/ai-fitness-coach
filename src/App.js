@@ -10,6 +10,9 @@ export default function App() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
+  const [darkMode, setDarkMode] = useState(
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -19,7 +22,6 @@ export default function App() {
       }
       setLoading(false)
     })
-
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setUser(session.user)
@@ -38,14 +40,13 @@ export default function App() {
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      <p style={{ color: '#666' }}>Loading...</p>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: darkMode ? '#0d0d10' : '#fff' }}>
+      <div style={{ color: '#7F77DD', fontSize: 24, fontWeight: 700, letterSpacing: 2 }}>REPS</div>
     </div>
   )
 
-  if (user && profile) return <Dashboard user={user} profile={profile} />
-  if (user && !profile) return <Onboarding user={user} onDone={() => fetchProfile(user.id)} />
-  if (showAuth) return <Login onLogin={(u) => setUser(u)} />
-
-  return <Landing onGetStarted={() => setShowAuth(true)} />
+  if (user && profile) return <Dashboard user={user} profile={profile} darkMode={darkMode} setDarkMode={setDarkMode} />
+  if (user && !profile) return <Onboarding user={user} onDone={() => fetchProfile(user.id)} darkMode={darkMode} />
+  if (showAuth) return <Login onLogin={(u) => setUser(u)} darkMode={darkMode} />
+  return <Landing onGetStarted={() => setShowAuth(true)} darkMode={darkMode} />
 }
