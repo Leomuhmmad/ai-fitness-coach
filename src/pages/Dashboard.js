@@ -16,6 +16,7 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
   const [todayDone, setTodayDone] = useState(false)
   const [activeTimer, setActiveTimer] = useState(null)
   const [timerInterval, setTimerInterval] = useState(null)
+  const [workoutHistory, setWorkoutHistory] = useState([])
   const [mobile, setMobile] = useState(isMobile())
 
   const t = darkMode ? {
@@ -41,11 +42,16 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
     const { data: np } = await supabase.from('nutrition_plans').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     if (wp?.length) setWorkoutPlan(wp[0].plan)
     if (np?.length) setNutritionPlan(np[0].plan)
+
     const today = new Date().toISOString().split('T')[0]
     const { data: tp } = await supabase.from('progress').select('*').eq('user_id', user.id).eq('date', today).single()
     if (tp?.workout_done) setTodayDone(true)
+
     const { data: sd } = await supabase.rpc('calculate_streak', { p_user_id: user.id })
     if (sd !== null) setStreak(sd)
+
+    const { data: history } = await supabase.from('workout_history').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(10)
+    if (history) setWorkoutHistory(history)
   }
 
   const callAI = async (messages, systemMsg = '') => {
@@ -107,9 +113,18 @@ Respond ONLY with JSON, no markdown:
 
   const markTodayDone = async () => {
     const today = new Date().toISOString().split('T')[0]
+    const exercisesDone = Object.entries(checked).filter(([_, v]) => v).map(([k]) => k)
     await supabase.from('progress').upsert({ user_id: user.id, date: today, workout_done: true }, { onConflict: 'user_id,date' })
+    await supabase.from('workout_history').insert({
+      user_id: user.id,
+      date: today,
+      exercises_done: exercisesDone,
+      total_exercises: workoutPlan?.days?.[0]?.exercises?.length || 0,
+      completed_exercises: exercisesDone.length
+    })
     setTodayDone(true)
     setStreak(prev => prev + 1)
+    setWorkoutHistory(prev => [{ date: today, completed_exercises: exercisesDone.length, total_exercises: workoutPlan?.days?.[0]?.exercises?.length || 0 }, ...prev])
   }
 
   const startTimer = (key, seconds) => {
@@ -137,12 +152,9 @@ Respond ONLY with JSON, no markdown:
     { id: 'profile', icon: 'ti-user', label: 'Profile' },
   ]
 
-  const s = (style) => style
-
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: t.bg, minHeight: '100vh', display: 'flex', color: t.text }}>
 
-      {/* SIDEBAR — Desktop */}
       {!mobile && (
         <div style={{ width: 220, flexShrink: 0, position: 'fixed', left: 0, top: 0, bottom: 0, borderRight: `0.5px solid ${t.border}`, padding: '20px 12px', background: t.bgS, display: 'flex', flexDirection: 'column', zIndex: 100 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', marginBottom: 32 }}>
@@ -175,7 +187,6 @@ Respond ONLY with JSON, no markdown:
 
       <div style={{ flex: 1, marginLeft: mobile ? 0 : 220, paddingBottom: mobile ? 80 : 0 }}>
 
-        {/* TOP BAR — Mobile */}
         {mobile && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: `0.5px solid ${t.border}`, background: t.bgS }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -183,9 +194,7 @@ Respond ONLY with JSON, no markdown:
               <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: 2, color: t.text }}>REPS</span>
             </div>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <button onClick={() => setDarkMode(!darkMode)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}>
-                {darkMode ? '☀️' : '🌙'}
-              </button>
+              <button onClick={() => setDarkMode(!darkMode)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}>{darkMode ? '☀️' : '🌙'}</button>
               <button onClick={signOut} style={{ fontSize: 12, color: t.textS, background: 'none', border: 'none', cursor: 'pointer' }}>Sign out</button>
             </div>
           </div>
@@ -196,7 +205,6 @@ Respond ONLY with JSON, no markdown:
           {/* HOME */}
           {screen === 'home' && (
             <div>
-              {/* Hero */}
               <div style={{ background: darkMode ? 'linear-gradient(135deg,#1E1B3A,#2D2458)' : '#7F77DD', borderRadius: 18, padding: mobile ? 20 : 28, color: 'white', marginBottom: 24 }}>
                 <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
                   {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -211,7 +219,6 @@ Respond ONLY with JSON, no markdown:
                 </div>
               </div>
 
-              {/* Coach Alex */}
               <div style={{ background: t.bgS, borderRadius: 16, padding: 16, marginBottom: 20, border: `0.5px solid ${darkMode ? t.border : '#e8e6ff'}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -251,7 +258,6 @@ Respond ONLY with JSON, no markdown:
                 </div>
               </div>
 
-              {/* Complete button */}
               {!todayDone ? (
                 <button onClick={markTodayDone} style={{ width: '100%', padding: '14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 20, letterSpacing: 0.5 }}>
                   Complete Today's Workout ✓
@@ -262,7 +268,6 @@ Respond ONLY with JSON, no markdown:
                 </div>
               )}
 
-              {/* Weekly Plan */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: t.textM, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Weekly Plan</div>
                 <button onClick={generatePlan} disabled={loadingAI} style={{ fontSize: 12, color: t.accent, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
@@ -280,7 +285,7 @@ Respond ONLY with JSON, no markdown:
                   {workoutPlan.days?.map((day, dayIndex) => {
                     const isToday = new Date().toLocaleDateString('en-US', { weekday: 'long' }) === day.day
                     return (
-                      <div key={dayIndex} style={{ borderRadius: 14, overflow: 'hidden', border: isToday ? `1.5px solid #7F77DD` : `0.5px solid ${t.border}` }}>
+                      <div key={dayIndex} style={{ borderRadius: 14, overflow: 'hidden', border: isToday ? '1.5px solid #7F77DD' : `0.5px solid ${t.border}` }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: isToday ? '#7F77DD' : t.bgS }}>
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 13, color: isToday ? 'white' : t.text }}>{day.day} {isToday && '← Today'}</div>
@@ -404,6 +409,7 @@ Respond ONLY with JSON, no markdown:
                 <div style={{ fontSize: mobile ? 22 : 26, fontWeight: 700, color: t.text }}>Progress</div>
                 <div style={{ fontSize: 13, color: t.textS }}>Track your fitness journey</div>
               </div>
+
               <div style={{ background: darkMode ? '#1E1B3A' : '#EEEDFE', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
                 <div style={{ fontSize: 52, fontWeight: 700, color: '#7F77DD', lineHeight: 1 }}>{streak}</div>
                 <div>
@@ -411,6 +417,7 @@ Respond ONLY with JSON, no markdown:
                   <div style={{ fontSize: 13, color: darkMode ? '#AFA9EC' : '#534AB7', marginTop: 3 }}>Keep grinding — you're unstoppable!</div>
                 </div>
               </div>
+
               <div style={{ fontSize: 11, fontWeight: 600, color: t.textM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>This Week</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 20 }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
@@ -423,10 +430,11 @@ Respond ONLY with JSON, no markdown:
                   )
                 })}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 24 }}>
                 {[
                   { val: streak + ' 🔥', label: 'Streak' },
-                  { val: profile.weight_kg + 'kg', label: 'Weight' },
+                  { val: workoutHistory.length, label: 'Total Workouts' },
                   { val: todayDone ? '✅' : '⏳', label: 'Today' },
                 ].map(s => (
                   <div key={s.label} style={{ background: t.bgS, borderRadius: 12, padding: 16, textAlign: 'center', border: `0.5px solid ${t.border}` }}>
@@ -435,6 +443,33 @@ Respond ONLY with JSON, no markdown:
                   </div>
                 ))}
               </div>
+
+              <div style={{ fontSize: 11, fontWeight: 600, color: t.textM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Workout History</div>
+              {workoutHistory.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 20px', background: t.bgS, borderRadius: 14, color: t.textS, fontSize: 13, border: `0.5px solid ${t.border}` }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+                  <div>No workouts yet — complete your first one!</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {workoutHistory.map((w, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', background: t.bgS, borderRadius: 12, border: `0.5px solid ${t.border}` }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: t.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>💪</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>
+                          {new Date(w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div style={{ fontSize: 12, color: t.textS, marginTop: 2 }}>
+                          {w.completed_exercises}/{w.total_exercises} exercises completed
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: w.completed_exercises === w.total_exercises ? '#7F77DD' : t.textS }}>
+                        {w.completed_exercises === w.total_exercises ? '✓ Full' : `${Math.round((w.completed_exercises / w.total_exercises) * 100)}%`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -509,7 +544,6 @@ Respond ONLY with JSON, no markdown:
         </div>
       </div>
 
-      {/* BOTTOM NAV — Mobile */}
       {mobile && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', background: t.bgS, borderTop: `0.5px solid ${t.border}`, zIndex: 100 }}>
           {navItems.map(tab => (
