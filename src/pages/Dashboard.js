@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import ExerciseGif from '../components/ExerciseGif'
+import ProModal from '../components/ProModal'
 
 const isMobile = () => window.innerWidth <= 768
+const FREE_PLAN_LIMIT = 3
 
 export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
   const [screen, setScreen] = useState('home')
@@ -19,6 +21,9 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
   const [timerInterval, setTimerInterval] = useState(null)
   const [workoutHistory, setWorkoutHistory] = useState([])
   const [mobile, setMobile] = useState(isMobile())
+  const [planCount, setPlanCount] = useState(0)
+  const [isPro, setIsPro] = useState(false)
+  const [showProModal, setShowProModal] = useState(false)
 
   const t = darkMode ? {
     bg: '#0d0d10', bgS: '#131316', bgCard: '#1a1a20',
@@ -43,13 +48,25 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
     const { data: np } = await supabase.from('nutrition_plans').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     if (wp?.length) setWorkoutPlan(wp[0].plan)
     if (np?.length) setNutritionPlan(np[0].plan)
+
     const today = new Date().toISOString().split('T')[0]
     const { data: tp } = await supabase.from('progress').select('*').eq('user_id', user.id).eq('date', today).single()
     if (tp?.workout_done) setTodayDone(true)
+
     const { data: sd } = await supabase.rpc('calculate_streak', { p_user_id: user.id })
     if (sd !== null) setStreak(sd)
+
     const { data: history } = await supabase.from('workout_history').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(10)
     if (history) setWorkoutHistory(history)
+
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+    const { count } = await supabase.from('workout_plans').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', startOfMonth.toISOString())
+    setPlanCount(count || 0)
+
+    const { data: proData } = await supabase.from('profiles').select('is_pro').eq('id', user.id).single()
+    if (proData?.is_pro) setIsPro(true)
   }
 
   const callAI = async (messages, systemMsg = '') => {
@@ -63,6 +80,10 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
   }
 
   const generatePlan = async () => {
+    if (!isPro && planCount >= FREE_PLAN_LIMIT) {
+      setShowProModal(true)
+      return
+    }
     setLoadingAI(true)
     try {
       const prompt = `Create a detailed weekly home workout plan for:
@@ -74,11 +95,13 @@ Respond ONLY with JSON, no markdown:
       const plan = JSON.parse(text.replace(/```json|```/g, '').trim())
       await supabase.from('workout_plans').insert({ user_id: user.id, plan })
       setWorkoutPlan(plan)
+      setPlanCount(prev => prev + 1)
     } catch (e) { alert('Error generating plan.') }
     setLoadingAI(false)
   }
 
   const generateNutrition = async () => {
+    if (!isPro) { setShowProModal(true); return }
     setLoadingAI(true)
     try {
       const prompt = `Create a daily nutrition plan for:
@@ -94,6 +117,7 @@ Respond ONLY with JSON, no markdown:
   }
 
   const askCoach = async () => {
+    if (!isPro) { setShowProModal(true); return }
     if (!question.trim()) return
     setAsking(true)
     const userMsg = question
@@ -141,6 +165,7 @@ Respond ONLY with JSON, no markdown:
   const signOut = async () => { await supabase.auth.signOut(); window.location.reload() }
   const toggleCheck = (key) => setChecked(p => ({ ...p, [key]: !p[key] }))
   const doneCount = Object.values(checked).filter(Boolean).length
+  const plansLeft = Math.max(0, FREE_PLAN_LIMIT - planCount)
 
   const navItems = [
     { id: 'home', icon: 'ti-home', label: 'Home' },
@@ -151,6 +176,8 @@ Respond ONLY with JSON, no markdown:
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: t.bg, minHeight: '100vh', display: 'flex', color: t.text }}>
+
+      {showProModal && <ProModal onClose={() => setShowProModal(false)} darkMode={darkMode} />}
 
       {!mobile && (
         <div style={{ width: 220, flexShrink: 0, position: 'fixed', left: 0, top: 0, bottom: 0, borderRight: `0.5px solid ${t.border}`, padding: '20px 12px', background: t.bgS, display: 'flex', flexDirection: 'column', zIndex: 100 }}>
@@ -167,13 +194,18 @@ Respond ONLY with JSON, no markdown:
               <span style={{ fontSize: 14, color: screen === tab.id ? t.accent : t.textS, fontWeight: screen === tab.id ? 600 : 400 }}>{tab.label}</span>
             </button>
           ))}
+          {!isPro && (
+            <button onClick={() => setShowProModal(true)} style={{ margin: '8px 0', padding: '11px 14px', background: 'linear-gradient(135deg,#7F77DD,#534AB7)', border: 'none', borderRadius: 10, cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600, textAlign: 'left' }}>
+              👑 Upgrade to Pro
+            </button>
+          )}
           <div style={{ marginTop: 'auto' }}>
             <div style={{ padding: '0 14px', marginBottom: 16 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: t.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: t.accent, marginBottom: 8 }}>
                 {profile.name?.charAt(0).toUpperCase()}
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{profile.name}</div>
-              <div style={{ fontSize: 11, color: t.textS, marginTop: 2 }}>{user.email}</div>
+              <div style={{ fontSize: 11, color: t.textS, marginTop: 2 }}>{isPro ? '👑 Pro' : `${plansLeft} plans left`}</div>
             </div>
             <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'none', border: 'none', borderRadius: 10, cursor: 'pointer', width: '100%', color: '#e74c3c', fontSize: 13 }}>
               <i className="ti ti-logout" aria-hidden="true"></i> Sign out
@@ -190,7 +222,8 @@ Respond ONLY with JSON, no markdown:
               <div style={{ width: 28, height: 28, background: '#7F77DD', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700, letterSpacing: -1 }}>R</div>
               <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: 2, color: t.text }}>REPS</span>
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {!isPro && <button onClick={() => setShowProModal(true)} style={{ padding: '5px 10px', background: 'linear-gradient(135deg,#7F77DD,#534AB7)', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'white', fontSize: 11, fontWeight: 600 }}>👑 Pro</button>}
               <button onClick={() => setDarkMode(!darkMode)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}>{darkMode ? '☀️' : '🌙'}</button>
               <button onClick={signOut} style={{ fontSize: 12, color: t.textS, background: 'none', border: 'none', cursor: 'pointer' }}>Sign out</button>
             </div>
@@ -215,12 +248,36 @@ Respond ONLY with JSON, no markdown:
                 </div>
               </div>
 
-              <div style={{ background: t.bgS, borderRadius: 16, padding: 16, marginBottom: 20, border: `0.5px solid ${darkMode ? t.border : '#e8e6ff'}` }}>
+              {/* Free plan counter */}
+              {!isPro && (
+                <div style={{ background: t.bgS, borderRadius: 12, padding: '12px 16px', marginBottom: 16, border: `0.5px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{plansLeft} free plans left this month</div>
+                    <div style={{ fontSize: 11, color: t.textS, marginTop: 2 }}>Upgrade to Pro for unlimited access</div>
+                  </div>
+                  <button onClick={() => setShowProModal(true)} style={{ padding: '7px 14px', background: 'linear-gradient(135deg,#7F77DD,#534AB7)', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'white', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                    👑 Upgrade
+                  </button>
+                </div>
+              )}
+
+              {/* Coach Alex — Pro only */}
+              <div style={{ background: t.bgS, borderRadius: 16, padding: 16, marginBottom: 20, border: `0.5px solid ${darkMode ? t.border : '#e8e6ff'}`, position: 'relative', overflow: 'hidden' }}>
+                {!isPro && (
+                  <div style={{ position: 'absolute', inset: 0, background: darkMode ? 'rgba(13,13,16,0.85)' : 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 16 }}>
+                    <div style={{ fontSize: 28 }}>👑</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Coach Alex is Pro only</div>
+                    <div style={{ fontSize: 12, color: t.textS, textAlign: 'center', maxWidth: 220 }}>Upgrade to chat with your AI personal trainer</div>
+                    <button onClick={() => setShowProModal(true)} style={{ padding: '8px 20px', background: '#7F77DD', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600 }}>
+                      Upgrade to Pro
+                    </button>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 38, height: 38, borderRadius: '50%', background: t.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🏋️</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: t.text }}>Coach Alex</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: t.text }}>Coach Alex <span style={{ fontSize: 10, background: 'linear-gradient(135deg,#7F77DD,#534AB7)', color: 'white', padding: '2px 6px', borderRadius: 4, marginLeft: 4 }}>PRO</span></div>
                       <div style={{ fontSize: 11, color: t.textS }}>Your AI personal trainer</div>
                     </div>
                   </div>
@@ -246,9 +303,10 @@ Respond ONLY with JSON, no markdown:
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askCoach()}
-                    placeholder={chatHistory.length > 0 ? 'Continue...' : 'Ask Coach Alex anything...'}
-                    style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: `0.5px solid ${t.border}`, borderRadius: 10, outline: 'none', background: t.bgCard, color: t.text }} />
-                  <button onClick={askCoach} disabled={asking} style={{ padding: '10px 14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14 }}>
+                    placeholder={isPro ? (chatHistory.length > 0 ? 'Continue...' : 'Ask Coach Alex anything...') : 'Upgrade to Pro to chat...'}
+                    disabled={!isPro}
+                    style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: `0.5px solid ${t.border}`, borderRadius: 10, outline: 'none', background: t.bgCard, color: t.text, opacity: isPro ? 1 : 0.5 }} />
+                  <button onClick={askCoach} disabled={asking || !isPro} style={{ padding: '10px 14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, cursor: isPro ? 'pointer' : 'default', fontSize: 14, opacity: isPro ? 1 : 0.5 }}>
                     <i className="ti ti-send" aria-hidden="true"></i>
                   </button>
                 </div>
@@ -275,6 +333,7 @@ Respond ONLY with JSON, no markdown:
                 <div style={{ textAlign: 'center', padding: '40px 20px', background: t.bgS, borderRadius: 14, color: t.textS, fontSize: 14, border: `0.5px solid ${t.border}` }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>💪</div>
                   <div>Tap "Generate with AI" to get your weekly plan</div>
+                  {!isPro && <div style={{ fontSize: 12, color: t.accent, marginTop: 8 }}>{plansLeft} free plans remaining this month</div>}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -296,11 +355,7 @@ Respond ONLY with JSON, no markdown:
                             const isActive = activeTimer?.key === key
                             return (
                               <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: `0.5px solid ${checked[key] ? '#7F77DD' : t.border}` }}>
-                                {/* GIF */}
-                                {isToday && (
-                                  <ExerciseGif exerciseName={ex.name} darkMode={darkMode} />
-                                )}
-                                {/* Exercise Info */}
+                                {isToday && <ExerciseGif exerciseName={ex.name} darkMode={darkMode} />}
                                 <div onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: checked[key] ? t.accentBg : t.bgCard, cursor: isToday ? 'pointer' : 'default' }}>
                                   {isToday && (
                                     <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#7F77DD' : 'transparent', border: `1.5px solid ${checked[key] ? '#7F77DD' : t.textM}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -318,7 +373,6 @@ Respond ONLY with JSON, no markdown:
                                     </button>
                                   )}
                                 </div>
-                                {/* Timer */}
                                 {isActive && (
                                   <div style={{ background: t.accentBg, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ fontSize: 22, fontWeight: 700, color: activeTimer.seconds > 10 ? t.accent : '#e74c3c', minWidth: 44 }}>{activeTimer.seconds}s</div>
@@ -354,14 +408,23 @@ Respond ONLY with JSON, no markdown:
             <div>
               <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: mobile ? 22 : 26, fontWeight: 700, color: t.text }}>Nutrition</div>
+                  <div style={{ fontSize: mobile ? 22 : 26, fontWeight: 700, color: t.text }}>Nutrition <span style={{ fontSize: 11, background: 'linear-gradient(135deg,#7F77DD,#534AB7)', color: 'white', padding: '2px 7px', borderRadius: 4, marginLeft: 4 }}>PRO</span></div>
                   <div style={{ fontSize: 13, color: t.textS }}>Your AI-generated meal plan</div>
                 </div>
                 <button onClick={generateNutrition} disabled={loadingAI} style={{ fontSize: 13, color: t.accent, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
                   {loadingAI ? 'Generating...' : nutritionPlan ? '↻ Regenerate' : '✦ Generate'}
                 </button>
               </div>
-              {!nutritionPlan ? (
+              {!isPro ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', background: t.bgS, borderRadius: 16, border: `0.5px solid ${t.border}` }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🥗</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 8 }}>Nutrition Plans — Pro Feature</div>
+                  <div style={{ fontSize: 13, color: t.textS, marginBottom: 20, lineHeight: 1.6 }}>Get personalized daily meal plans with exact calories, protein, and macros calculated for your body.</div>
+                  <button onClick={() => setShowProModal(true)} style={{ padding: '12px 28px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                    👑 Upgrade to Pro
+                  </button>
+                </div>
+              ) : !nutritionPlan ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', background: t.bgS, borderRadius: 14, color: t.textS, fontSize: 14, border: `0.5px solid ${t.border}` }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>🥗</div>
                   <div>Tap "Generate" to get your nutrition plan</div>
@@ -481,9 +544,22 @@ Respond ONLY with JSON, no markdown:
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 18, color: 'white' }}>{profile.name}</div>
                   <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{user.email}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Goal: {profile.goal?.replace('_', ' ')}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>{isPro ? '👑 Pro Member' : `Free — ${plansLeft} plans left`}</div>
                 </div>
               </div>
+
+              {!isPro && (
+                <div style={{ background: 'linear-gradient(135deg,#7F77DD,#534AB7)', borderRadius: 14, padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Upgrade to Pro</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Unlimited plans + Coach Alex</div>
+                  </div>
+                  <button onClick={() => setShowProModal(true)} style={{ padding: '8px 16px', background: 'white', color: '#7F77DD', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    $9.99/mo
+                  </button>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
                 {[
                   { label: 'Age', val: profile.age + ' yrs', icon: 'ti-calendar' },
