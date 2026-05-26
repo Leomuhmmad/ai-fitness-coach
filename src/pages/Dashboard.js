@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import ExerciseGif from '../components/ExerciseGif'
 
 const isMobile = () => window.innerWidth <= 768
 
@@ -20,11 +21,11 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
   const [mobile, setMobile] = useState(isMobile())
 
   const t = darkMode ? {
-    bg: '#0d0d10', bgS: '#131316', bgCard: '#1a1a20', bgHero: 'linear-gradient(135deg,#1E1B3A,#2D2458)',
+    bg: '#0d0d10', bgS: '#131316', bgCard: '#1a1a20',
     accent: '#7F77DD', accentBg: '#1E1B3A', accentText: '#AFA9EC',
     text: '#fff', textS: '#888', textM: '#555', border: '#2a2a30',
   } : {
-    bg: '#fff', bgS: '#f8f8ff', bgCard: '#fff', bgHero: '#7F77DD',
+    bg: '#fff', bgS: '#f8f8ff', bgCard: '#fff',
     accent: '#7F77DD', accentBg: '#EEEDFE', accentText: '#534AB7',
     text: '#111', textS: '#666', textM: '#bbb', border: '#f0f0f0',
   }
@@ -42,14 +43,11 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
     const { data: np } = await supabase.from('nutrition_plans').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     if (wp?.length) setWorkoutPlan(wp[0].plan)
     if (np?.length) setNutritionPlan(np[0].plan)
-
     const today = new Date().toISOString().split('T')[0]
     const { data: tp } = await supabase.from('progress').select('*').eq('user_id', user.id).eq('date', today).single()
     if (tp?.workout_done) setTodayDone(true)
-
     const { data: sd } = await supabase.rpc('calculate_streak', { p_user_id: user.id })
     if (sd !== null) setStreak(sd)
-
     const { data: history } = await supabase.from('workout_history').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(10)
     if (history) setWorkoutHistory(history)
   }
@@ -116,8 +114,7 @@ Respond ONLY with JSON, no markdown:
     const exercisesDone = Object.entries(checked).filter(([_, v]) => v).map(([k]) => k)
     await supabase.from('progress').upsert({ user_id: user.id, date: today, workout_done: true }, { onConflict: 'user_id,date' })
     await supabase.from('workout_history').insert({
-      user_id: user.id,
-      date: today,
+      user_id: user.id, date: today,
       exercises_done: exercisesDone,
       total_exercises: workoutPlan?.days?.[0]?.exercises?.length || 0,
       completed_exercises: exercisesDone.length
@@ -202,7 +199,6 @@ Respond ONLY with JSON, no markdown:
 
         <div style={{ maxWidth: 800, margin: '0 auto', padding: mobile ? '20px 16px' : '32px 40px' }}>
 
-          {/* HOME */}
           {screen === 'home' && (
             <div>
               <div style={{ background: darkMode ? 'linear-gradient(135deg,#1E1B3A,#2D2458)' : '#7F77DD', borderRadius: 18, padding: mobile ? 20 : 28, color: 'white', marginBottom: 24 }}>
@@ -259,7 +255,7 @@ Respond ONLY with JSON, no markdown:
               </div>
 
               {!todayDone ? (
-                <button onClick={markTodayDone} style={{ width: '100%', padding: '14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 20, letterSpacing: 0.5 }}>
+                <button onClick={markTodayDone} style={{ width: '100%', padding: '14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 20 }}>
                   Complete Today's Workout ✓
                 </button>
               ) : (
@@ -293,21 +289,26 @@ Respond ONLY with JSON, no markdown:
                           </div>
                           <div style={{ fontSize: 11, color: isToday ? 'rgba(255,255,255,0.75)' : t.textM }}>{day.exercises?.length} exercises</div>
                         </div>
-                        <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 5, background: t.bgCard }}>
+                        <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8, background: t.bgCard }}>
                           {day.exercises?.map((ex, i) => {
                             const key = `day-${dayIndex}-ex-${i}`
                             const restSecs = parseRest(ex.rest)
                             const isActive = activeTimer?.key === key
                             return (
-                              <div key={i} style={{ borderRadius: 9, overflow: 'hidden', border: `0.5px solid ${checked[key] ? '#7F77DD' : t.border}` }}>
-                                <div onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: checked[key] ? t.accentBg : t.bgCard, cursor: isToday ? 'pointer' : 'default' }}>
+                              <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: `0.5px solid ${checked[key] ? '#7F77DD' : t.border}` }}>
+                                {/* GIF */}
+                                {isToday && (
+                                  <ExerciseGif exerciseName={ex.name} darkMode={darkMode} />
+                                )}
+                                {/* Exercise Info */}
+                                <div onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: checked[key] ? t.accentBg : t.bgCard, cursor: isToday ? 'pointer' : 'default' }}>
                                   {isToday && (
-                                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: checked[key] ? '#7F77DD' : 'transparent', border: `1.5px solid ${checked[key] ? '#7F77DD' : t.textM}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                      {checked[key] && <i className="ti ti-check" style={{ fontSize: 10, color: 'white' }} aria-hidden="true"></i>}
+                                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#7F77DD' : 'transparent', border: `1.5px solid ${checked[key] ? '#7F77DD' : t.textM}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                      {checked[key] && <i className="ti ti-check" style={{ fontSize: 11, color: 'white' }} aria-hidden="true"></i>}
                                     </div>
                                   )}
                                   <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 500, color: checked[key] ? t.textS : t.text, textDecoration: checked[key] ? 'line-through' : 'none' }}>{ex.name}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: checked[key] ? t.textS : t.text, textDecoration: checked[key] ? 'line-through' : 'none' }}>{ex.name}</div>
                                     <div style={{ fontSize: 11, color: t.textM, marginTop: 1 }}>{ex.sets} sets · {ex.reps} reps · {ex.rest} rest</div>
                                   </div>
                                   {isToday && (
@@ -317,6 +318,7 @@ Respond ONLY with JSON, no markdown:
                                     </button>
                                   )}
                                 </div>
+                                {/* Timer */}
                                 {isActive && (
                                   <div style={{ background: t.accentBg, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ fontSize: 22, fontWeight: 700, color: activeTimer.seconds > 10 ? t.accent : '#e74c3c', minWidth: 44 }}>{activeTimer.seconds}s</div>
@@ -348,7 +350,6 @@ Respond ONLY with JSON, no markdown:
             </div>
           )}
 
-          {/* NUTRITION */}
           {screen === 'nutrition' && (
             <div>
               <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -402,14 +403,12 @@ Respond ONLY with JSON, no markdown:
             </div>
           )}
 
-          {/* PROGRESS */}
           {screen === 'progress' && (
             <div>
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: mobile ? 22 : 26, fontWeight: 700, color: t.text }}>Progress</div>
                 <div style={{ fontSize: 13, color: t.textS }}>Track your fitness journey</div>
               </div>
-
               <div style={{ background: darkMode ? '#1E1B3A' : '#EEEDFE', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
                 <div style={{ fontSize: 52, fontWeight: 700, color: '#7F77DD', lineHeight: 1 }}>{streak}</div>
                 <div>
@@ -417,7 +416,6 @@ Respond ONLY with JSON, no markdown:
                   <div style={{ fontSize: 13, color: darkMode ? '#AFA9EC' : '#534AB7', marginTop: 3 }}>Keep grinding — you're unstoppable!</div>
                 </div>
               </div>
-
               <div style={{ fontSize: 11, fontWeight: 600, color: t.textM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>This Week</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 20 }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
@@ -430,7 +428,6 @@ Respond ONLY with JSON, no markdown:
                   )
                 })}
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 24 }}>
                 {[
                   { val: streak + ' 🔥', label: 'Streak' },
@@ -443,7 +440,6 @@ Respond ONLY with JSON, no markdown:
                   </div>
                 ))}
               </div>
-
               <div style={{ fontSize: 11, fontWeight: 600, color: t.textM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Workout History</div>
               {workoutHistory.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px 20px', background: t.bgS, borderRadius: 14, color: t.textS, fontSize: 13, border: `0.5px solid ${t.border}` }}>
@@ -473,7 +469,6 @@ Respond ONLY with JSON, no markdown:
             </div>
           )}
 
-          {/* PROFILE */}
           {screen === 'profile' && (
             <div>
               <div style={{ marginBottom: 20 }}>
