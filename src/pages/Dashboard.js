@@ -355,7 +355,7 @@ Respond ONLY with JSON, no markdown:
                             const isActive = activeTimer?.key === key
                             return (
                               <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: `0.5px solid ${checked[key] ? '#7F77DD' : t.border}` }}>
-                                {isToday && <ExerciseGif exerciseName={ex.name} darkMode={darkMode} />}
+                                <ExerciseGif exerciseName={ex.name} darkMode={darkMode} />
                                 <div onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: checked[key] ? t.accentBg : t.bgCard, cursor: isToday ? 'pointer' : 'default' }}>
                                   {isToday && (
                                     <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#7F77DD' : 'transparent', border: `1.5px solid ${checked[key] ? '#7F77DD' : t.textM}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
