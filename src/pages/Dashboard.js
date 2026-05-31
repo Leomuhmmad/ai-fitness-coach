@@ -80,10 +80,7 @@ export default function Dashboard({ user, profile, darkMode, setDarkMode }) {
   }
 
   const generatePlan = async () => {
-    if (!isPro && planCount >= FREE_PLAN_LIMIT) {
-      setShowProModal(true)
-      return
-    }
+    if (!isPro && planCount >= FREE_PLAN_LIMIT) { setShowProModal(true); return }
     setLoadingAI(true)
     try {
       const prompt = `Create a detailed weekly home workout plan for:
@@ -125,7 +122,7 @@ Respond ONLY with JSON, no markdown:
     const newHistory = [...chatHistory, { role: 'user', content: userMsg }]
     setChatHistory(newHistory)
     try {
-      const answer = await callAI(newHistory, `You are Coach Alex, an expert fitness and nutrition coach. The user's goal is ${profile.goal}, age ${profile.age}, weight ${profile.weight_kg}kg. Give concise, motivating advice.`)
+      const answer = await callAI(newHistory, `You are Coach Alex, an expert fitness coach. User goal: ${profile.goal}, age: ${profile.age}, weight: ${profile.weight_kg}kg. Be concise and motivating.`)
       setChatHistory([...newHistory, { role: 'assistant', content: answer }])
     } catch (e) {
       setChatHistory([...newHistory, { role: 'assistant', content: 'Error connecting. Try again.' }])
@@ -184,9 +181,7 @@ Respond ONLY with JSON, no markdown:
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', marginBottom: 32 }}>
             <div style={{ width: 30, height: 30, background: '#7F77DD', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 15, fontWeight: 700, letterSpacing: -1 }}>R</div>
             <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: 2, color: t.text }}>REPS</span>
-            <button onClick={() => setDarkMode(!darkMode)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>
-              {darkMode ? '☀️' : '🌙'}
-            </button>
+            <button onClick={() => setDarkMode(!darkMode)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>{darkMode ? '☀️' : '🌙'}</button>
           </div>
           {navItems.map(tab => (
             <button key={tab.id} onClick={() => setScreen(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: screen === tab.id ? t.accentBg : 'none', border: 'none', borderRadius: 10, cursor: 'pointer', width: '100%', marginBottom: 4, textAlign: 'left' }}>
@@ -205,7 +200,7 @@ Respond ONLY with JSON, no markdown:
                 {profile.name?.charAt(0).toUpperCase()}
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{profile.name}</div>
-              <div style={{ fontSize: 11, color: t.textS, marginTop: 2 }}>{isPro ? '👑 Pro' : `${plansLeft} plans left`}</div>
+              <div style={{ fontSize: 11, color: t.textS, marginTop: 2 }}>{isPro ? '👑 Pro Member' : `${plansLeft} plans left`}</div>
             </div>
             <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'none', border: 'none', borderRadius: 10, cursor: 'pointer', width: '100%', color: '#e74c3c', fontSize: 13 }}>
               <i className="ti ti-logout" aria-hidden="true"></i> Sign out
@@ -215,7 +210,6 @@ Respond ONLY with JSON, no markdown:
       )}
 
       <div style={{ flex: 1, marginLeft: mobile ? 0 : 220, paddingBottom: mobile ? 80 : 0 }}>
-
         {mobile && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: `0.5px solid ${t.border}`, background: t.bgS }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -248,7 +242,6 @@ Respond ONLY with JSON, no markdown:
                 </div>
               </div>
 
-              {/* Free plan counter */}
               {!isPro && (
                 <div style={{ background: t.bgS, borderRadius: 12, padding: '12px 16px', marginBottom: 16, border: `0.5px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
@@ -261,16 +254,13 @@ Respond ONLY with JSON, no markdown:
                 </div>
               )}
 
-              {/* Coach Alex — Pro only */}
               <div style={{ background: t.bgS, borderRadius: 16, padding: 16, marginBottom: 20, border: `0.5px solid ${darkMode ? t.border : '#e8e6ff'}`, position: 'relative', overflow: 'hidden' }}>
                 {!isPro && (
-                  <div style={{ position: 'absolute', inset: 0, background: darkMode ? 'rgba(13,13,16,0.85)' : 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 16 }}>
+                  <div style={{ position: 'absolute', inset: 0, background: darkMode ? 'rgba(13,13,16,0.88)' : 'rgba(255,255,255,0.88)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 16 }}>
                     <div style={{ fontSize: 28 }}>👑</div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Coach Alex is Pro only</div>
                     <div style={{ fontSize: 12, color: t.textS, textAlign: 'center', maxWidth: 220 }}>Upgrade to chat with your AI personal trainer</div>
-                    <button onClick={() => setShowProModal(true)} style={{ padding: '8px 20px', background: '#7F77DD', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600 }}>
-                      Upgrade to Pro
-                    </button>
+                    <button onClick={() => setShowProModal(true)} style={{ padding: '8px 20px', background: '#7F77DD', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600 }}>Upgrade to Pro</button>
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -281,9 +271,7 @@ Respond ONLY with JSON, no markdown:
                       <div style={{ fontSize: 11, color: t.textS }}>Your AI personal trainer</div>
                     </div>
                   </div>
-                  {chatHistory.length > 0 && (
-                    <button onClick={() => setChatHistory([])} style={{ fontSize: 12, color: t.textS, background: 'none', border: 'none', cursor: 'pointer' }}>Clear</button>
-                  )}
+                  {chatHistory.length > 0 && <button onClick={() => setChatHistory([])} style={{ fontSize: 12, color: t.textS, background: 'none', border: 'none', cursor: 'pointer' }}>Clear</button>}
                 </div>
                 {chatHistory.length > 0 && (
                   <div style={{ maxHeight: 260, overflowY: 'auto', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -294,19 +282,14 @@ Respond ONLY with JSON, no markdown:
                         </div>
                       </div>
                     ))}
-                    {asking && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                        <div style={{ padding: '8px 12px', borderRadius: '12px 12px 12px 2px', fontSize: 13, background: t.bgCard, border: `0.5px solid ${t.border}`, color: t.textS }}>Thinking...</div>
-                      </div>
-                    )}
+                    {asking && <div style={{ display: 'flex', justifyContent: 'flex-start' }}><div style={{ padding: '8px 12px', borderRadius: '12px 12px 12px 2px', fontSize: 13, background: t.bgCard, border: `0.5px solid ${t.border}`, color: t.textS }}>Thinking...</div></div>}
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askCoach()}
-                    placeholder={isPro ? (chatHistory.length > 0 ? 'Continue...' : 'Ask Coach Alex anything...') : 'Upgrade to Pro to chat...'}
-                    disabled={!isPro}
-                    style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: `0.5px solid ${t.border}`, borderRadius: 10, outline: 'none', background: t.bgCard, color: t.text, opacity: isPro ? 1 : 0.5 }} />
-                  <button onClick={askCoach} disabled={asking || !isPro} style={{ padding: '10px 14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, cursor: isPro ? 'pointer' : 'default', fontSize: 14, opacity: isPro ? 1 : 0.5 }}>
+                    placeholder="Ask Coach Alex anything..."
+                    style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: `0.5px solid ${t.border}`, borderRadius: 10, outline: 'none', background: t.bgCard, color: t.text }} />
+                  <button onClick={askCoach} disabled={asking} style={{ padding: '10px 14px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14 }}>
                     <i className="ti ti-send" aria-hidden="true"></i>
                   </button>
                 </div>
@@ -333,7 +316,7 @@ Respond ONLY with JSON, no markdown:
                 <div style={{ textAlign: 'center', padding: '40px 20px', background: t.bgS, borderRadius: 14, color: t.textS, fontSize: 14, border: `0.5px solid ${t.border}` }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>💪</div>
                   <div>Tap "Generate with AI" to get your weekly plan</div>
-                  {!isPro && <div style={{ fontSize: 12, color: t.accent, marginTop: 8 }}>{plansLeft} free plans remaining this month</div>}
+                  {!isPro && <div style={{ fontSize: 12, color: t.accent, marginTop: 8 }}>{plansLeft} free plans remaining</div>}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -355,23 +338,19 @@ Respond ONLY with JSON, no markdown:
                             const isActive = activeTimer?.key === key
                             return (
                               <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: `0.5px solid ${checked[key] ? '#7F77DD' : t.border}` }}>
-                                <ExerciseGif exerciseName={ex.name} darkMode={darkMode} />
-                                <div onClick={() => isToday && toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: checked[key] ? t.accentBg : t.bgCard, cursor: isToday ? 'pointer' : 'default' }}>
-                                  {isToday && (
-                                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#7F77DD' : 'transparent', border: `1.5px solid ${checked[key] ? '#7F77DD' : t.textM}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                      {checked[key] && <i className="ti ti-check" style={{ fontSize: 11, color: 'white' }} aria-hidden="true"></i>}
-                                    </div>
-                                  )}
+                                <ExerciseGif exerciseName={ex.name} darkMode={darkMode} isChecked={checked[key]} />
+                                <div onClick={() => toggleCheck(key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: checked[key] ? t.accentBg : t.bgCard, cursor: 'pointer' }}>
+                                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: checked[key] ? '#7F77DD' : 'transparent', border: `1.5px solid ${checked[key] ? '#7F77DD' : t.textM}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {checked[key] && <i className="ti ti-check" style={{ fontSize: 11, color: 'white' }} aria-hidden="true"></i>}
+                                  </div>
                                   <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 13, fontWeight: 600, color: checked[key] ? t.textS : t.text, textDecoration: checked[key] ? 'line-through' : 'none' }}>{ex.name}</div>
                                     <div style={{ fontSize: 11, color: t.textM, marginTop: 1 }}>{ex.sets} sets · {ex.reps} reps · {ex.rest} rest</div>
                                   </div>
-                                  {isToday && (
-                                    <button onClick={(e) => { e.stopPropagation(); isActive ? stopTimer() : startTimer(key, restSecs) }}
-                                      style={{ padding: '4px 9px', background: isActive ? '#e74c3c' : t.accentBg, color: isActive ? 'white' : t.accent, border: `0.5px solid ${isActive ? '#e74c3c' : t.accent}`, borderRadius: 6, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
-                                      <i className={`ti ${isActive ? 'ti-player-stop' : 'ti-clock'}`} aria-hidden="true"></i> {isActive ? 'Stop' : 'Rest'}
-                                    </button>
-                                  )}
+                                  <button onClick={(e) => { e.stopPropagation(); isActive ? stopTimer() : startTimer(key, restSecs) }}
+                                    style={{ padding: '4px 9px', background: isActive ? '#e74c3c' : t.accentBg, color: isActive ? 'white' : t.accent, border: `0.5px solid ${isActive ? '#e74c3c' : t.accent}`, borderRadius: 6, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                                    <i className={`ti ${isActive ? 'ti-player-stop' : 'ti-clock'}`} aria-hidden="true"></i> {isActive ? 'Stop' : 'Rest'}
+                                  </button>
                                 </div>
                                 {isActive && (
                                   <div style={{ background: t.accentBg, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -419,10 +398,8 @@ Respond ONLY with JSON, no markdown:
                 <div style={{ textAlign: 'center', padding: '48px 20px', background: t.bgS, borderRadius: 16, border: `0.5px solid ${t.border}` }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>🥗</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 8 }}>Nutrition Plans — Pro Feature</div>
-                  <div style={{ fontSize: 13, color: t.textS, marginBottom: 20, lineHeight: 1.6 }}>Get personalized daily meal plans with exact calories, protein, and macros calculated for your body.</div>
-                  <button onClick={() => setShowProModal(true)} style={{ padding: '12px 28px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                    👑 Upgrade to Pro
-                  </button>
+                  <div style={{ fontSize: 13, color: t.textS, marginBottom: 20, lineHeight: 1.6 }}>Get personalized daily meal plans with exact calories, protein, and macros.</div>
+                  <button onClick={() => setShowProModal(true)} style={{ padding: '12px 28px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>👑 Upgrade to Pro</button>
                 </div>
               ) : !nutritionPlan ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', background: t.bgS, borderRadius: 14, color: t.textS, fontSize: 14, border: `0.5px solid ${t.border}` }}>
@@ -441,9 +418,7 @@ Respond ONLY with JSON, no markdown:
                       <div key={m.label} style={{ background: t.bgS, borderRadius: 12, padding: 14, border: `0.5px solid ${t.border}` }}>
                         <div style={{ fontSize: 20, fontWeight: 700, color: t.text }}>{m.val}<span style={{ fontSize: 11, color: t.textS, fontWeight: 400 }}>{m.unit}</span></div>
                         <div style={{ fontSize: 11, color: t.textS, marginTop: 2 }}>{m.label}</div>
-                        <div style={{ height: 3, background: t.border, borderRadius: 2, marginTop: 8 }}>
-                          <div style={{ height: '100%', width: '70%', background: m.color, borderRadius: 2 }} />
-                        </div>
+                        <div style={{ height: 3, background: t.border, borderRadius: 2, marginTop: 8 }}><div style={{ height: '100%', width: '70%', background: m.color, borderRadius: 2 }} /></div>
                       </div>
                     ))}
                   </div>
@@ -518,9 +493,7 @@ Respond ONLY with JSON, no markdown:
                         <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>
                           {new Date(w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </div>
-                        <div style={{ fontSize: 12, color: t.textS, marginTop: 2 }}>
-                          {w.completed_exercises}/{w.total_exercises} exercises completed
-                        </div>
+                        <div style={{ fontSize: 12, color: t.textS, marginTop: 2 }}>{w.completed_exercises}/{w.total_exercises} exercises completed</div>
                       </div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: w.completed_exercises === w.total_exercises ? '#7F77DD' : t.textS }}>
                         {w.completed_exercises === w.total_exercises ? '✓ Full' : `${Math.round((w.completed_exercises / w.total_exercises) * 100)}%`}
@@ -547,19 +520,15 @@ Respond ONLY with JSON, no markdown:
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>{isPro ? '👑 Pro Member' : `Free — ${plansLeft} plans left`}</div>
                 </div>
               </div>
-
               {!isPro && (
                 <div style={{ background: 'linear-gradient(135deg,#7F77DD,#534AB7)', borderRadius: 14, padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Upgrade to Pro</div>
                     <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Unlimited plans + Coach Alex</div>
                   </div>
-                  <button onClick={() => setShowProModal(true)} style={{ padding: '8px 16px', background: 'white', color: '#7F77DD', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                    $9.99/mo
-                  </button>
+                  <button onClick={() => setShowProModal(true)} style={{ padding: '8px 16px', background: 'white', color: '#7F77DD', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>$9.99/mo</button>
                 </div>
               )}
-
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
                 {[
                   { label: 'Age', val: profile.age + ' yrs', icon: 'ti-calendar' },
@@ -625,7 +594,6 @@ Respond ONLY with JSON, no markdown:
           ))}
         </div>
       )}
-
     </div>
   )
 }

@@ -19,7 +19,6 @@ export default function ProModal({ onClose, darkMode }) {
             You've used your 3 free workout plans this month. Upgrade to get unlimited access.
           </div>
         </div>
-
         <div style={{ marginBottom: 20 }}>
           {[
             { icon: '✦', text: 'Unlimited AI workout plans' },
@@ -34,12 +33,10 @@ export default function ProModal({ onClose, darkMode }) {
             </div>
           ))}
         </div>
-
         <div style={{ background: 'linear-gradient(135deg, #7F77DD, #534AB7)', borderRadius: 14, padding: 16, textAlign: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 800, color: 'white' }}>$9.99<span style={{ fontSize: 14, fontWeight: 400, opacity: 0.8 }}>/month</span></div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Cancel anytime</div>
         </div>
-
         <button style={{ width: '100%', padding: '13px', background: '#7F77DD', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 10 }}>
           Upgrade to Pro →
         </button>
